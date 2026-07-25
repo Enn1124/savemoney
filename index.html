@@ -1,807 +1,552 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>안 사기 계좌</title>
-<meta name="description" content="사고 싶은 걸 결제하되 돈은 나가지 않는 앱" />
 <style>
-  :root{
-    --paper:#ffffff; --bg:#eceff4; --ink:#0f172a; --muted:#64748b; --faint:#94a3b8;
-    --line:#e2e8f0; --line2:#cbd5e1; --ok:#059669; --ok-soft:#ecfdf5; --bad:#e11d48;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    --sans: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
-    --r:14px;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-  button,input,select{font:inherit;color:inherit}
-  button{cursor:pointer;border:0;background:none}
-  :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin:0}
-  .wrap{max-width:1040px;margin:0 auto;padding:20px 16px 56px}
-  .hide{display:none !important}
-
-  /* 상단 계정 바 */
-  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-  .brand{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
-  .dot{width:7px;height:7px;border-radius:99px;background:var(--faint)}
-  .dot.live{background:var(--ok)}
-  .who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-  .who img{width:24px;height:24px;border-radius:99px}
-  .btn{border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;transition:background .15s}
-  .btn-dark{background:var(--ink);color:#fff}
-  .btn-dark:hover{background:#334155}
-  .btn-line{border:1px solid var(--line);background:var(--paper);color:var(--muted)}
-  .btn-line:hover{background:#f8fafc}
-  .btn-wide{width:100%;padding:12px;font-size:14px;border-radius:12px}
-
-  /* 계좌 패널 */
-  .panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:26px}
-  .panel-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-  .total{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:clamp(34px,8vw,58px);font-weight:700;letter-spacing:-.03em;margin:6px 0 2px}
-  .sub{margin:0;font-size:13px;color:var(--muted)}
-  .goalrow{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:26px;gap:12px}
-  .goalrow b{color:var(--ink);font-size:13px}
-  .bar{height:12px;border-radius:99px;background:#f1f5f9;overflow:hidden;margin-top:8px}
-  .bar span{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .7s cubic-bezier(.2,.8,.2,1)}
-  .left{margin:8px 0 0;font-family:var(--mono);font-size:11px;color:var(--faint)}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden;margin-top:24px}
-  .stat{background:var(--paper);padding:12px 6px;text-align:center}
-  .stat p{margin:0}
-  .stat .k{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
-  .stat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;margin-top:3px}
-
-  /* 본문 */
-  .cols{display:grid;grid-template-columns:1fr;gap:22px;margin-top:22px;align-items:start}
-  @media(min-width:940px){.cols{grid-template-columns:1.55fr 1fr}}
-  .sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-
-  /* 태그 바 */
-  .tagbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-  .chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
-  .chip:hover{background:#f8fafc}
-  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-  .chip .swatch{width:8px;height:8px;border-radius:99px;flex:none}
-  .chip.manage{border-style:dashed}
-
-  /* 카드 */
-  .grid{display:grid;grid-template-columns:1fr;gap:14px}
-  @media(min-width:560px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
-  .thumb{position:relative;height:132px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden}
-  .thumb img.full{width:100%;height:100%;object-fit:cover}
-  .thumb img.icon{width:44px;height:44px;object-fit:contain}
-  .thumb .ph{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.15em}
-  .badge{position:absolute;top:8px;left:8px;background:var(--ok);color:#fff;border-radius:99px;padding:3px 8px;font-family:var(--mono);font-size:10px;font-weight:700}
-  .tools{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
-  .card:hover .tools,.card:focus-within .tools{opacity:1}
-  .tool{background:rgba(255,255,255,.94);border-radius:99px;width:26px;height:26px;display:grid;place-items:center;font-size:12px;color:var(--muted)}
-  .tool:hover{color:var(--ink)}
-  .tool.del:hover{color:var(--bad)}
-  .body{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1}
-  .name{margin:0;font-size:14px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .price{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:18px;font-weight:700}
-  .tags{display:flex;flex-wrap:wrap;gap:4px}
-  .tag{border-radius:99px;padding:2px 8px;font-size:11px;font-weight:600}
-  .host{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;color:var(--faint);align-self:flex-start}
-  .host:hover{color:var(--muted)}
-  .pay{margin-top:auto}
-
-  .empty{border:1px dashed var(--line2);border-radius:var(--r);background:var(--paper);padding:40px 20px;text-align:center}
-  .empty p{margin:0 0 4px}
-  .empty .t{font-size:14px;font-weight:600}
-  .empty .d{font-size:12px;color:var(--muted);margin-bottom:16px}
-
-  /* 영수증 */
-  .receipt{background:var(--paper);border-radius:10px 10px 0 0;padding:22px 20px 8px}
-  .r-title{text-align:center;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.3em;margin:0}
-  .r-sub{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);margin:4px 0 0}
-  .tear{border-top:1px dashed var(--line2);margin:14px 0}
-  .lines{list-style:none;margin:0;padding:0;max-height:340px;overflow-y:auto}
-  .line{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-family:var(--mono);font-size:12px}
-  .line .d{color:var(--faint);flex:none}
-  .line .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .line .u{opacity:0;color:var(--faint);font-size:11px;flex:none}
-  .line:hover .u,.line:focus-within .u{opacity:1}
-  .line .u:hover{color:var(--bad)}
-  .line .p{font-variant-numeric:tabular-nums;font-weight:700;flex:none}
-  .r-total{display:flex;justify-content:space-between;font-family:var(--mono);font-size:14px;font-weight:700}
-  .r-foot{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);margin:12px 0 0}
-  .zig{display:block;width:100%;height:12px}
-
-  /* 태그별 집계 */
-  .brk{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-top:16px}
-  .brk-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:baseline;margin-top:10px}
-  .brk-row .lbl{font-size:12px;font-weight:600}
-  .brk-row .amt{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
-  .brk-bar{grid-column:1/-1;height:6px;border-radius:99px;background:#f1f5f9;overflow:hidden}
-  .brk-bar span{display:block;height:100%;border-radius:99px}
-
-  /* 모달 */
-  .veil{position:fixed;inset:0;z-index:40;background:rgba(15,23,42,.42);display:flex;align-items:flex-end;justify-content:center;padding:14px}
-  @media(min-width:560px){.veil{align-items:center}}
-  .modal{position:relative;background:var(--paper);border-radius:18px;width:100%;max-width:392px;padding:24px;max-height:88vh;overflow-y:auto}
-  .modal .x{position:absolute;right:14px;top:12px;color:var(--faint);font-size:18px;line-height:1}
-  .modal .x:hover{color:var(--ink)}
-  label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:16px 0 6px}
-  .in{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;background:#fff}
-  .in:focus{outline:2px solid var(--ink);outline-offset:0;border-color:transparent}
-  .in.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-  .row{display:flex;gap:8px}
-  .row .in{flex:1}
-  .pv{display:flex;gap:12px;align-items:center;background:#f8fafc;border-radius:10px;padding:10px;margin-top:10px}
-  .pv .box{width:54px;height:54px;border-radius:8px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none}
-  .pv .box img{max-width:100%;max-height:100%;object-fit:cover}
-  .pv small{display:block;font-size:11px;color:var(--faint)}
-  .picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-  .actions{display:flex;gap:8px;margin-top:24px}
-  .actions .btn{flex:1;padding:11px;border-radius:11px;font-size:14px}
-
-  /* 결제 단말기 */
-  .term{text-align:center}
-  .term .amt{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:38px;font-weight:700;margin:4px 0 0}
-  .hold{position:relative;width:100%;overflow:hidden;border-radius:12px;background:var(--ink);color:#fff;padding:15px;font-size:14px;font-weight:700;margin-top:22px;touch-action:none;user-select:none}
-  .hold .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ok)}
-  .hold .lb{position:relative}
-  .stamp{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ok);color:var(--ok);border-radius:9px;padding:8px 16px;font-family:var(--mono);font-weight:700;letter-spacing:.2em;transform:rotate(-7deg);animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
-  @keyframes pop{from{transform:rotate(-7deg) scale(.6);opacity:0}to{transform:rotate(-7deg) scale(1);opacity:1}}
-
-  /* 로그인 화면 */
-  .gate{max-width:392px;margin:12vh auto;text-align:center;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:34px 26px}
-  .gate h1{font-size:20px;margin:14px 0 6px}
-  .gate p{font-size:13px;color:var(--muted);margin:0 0 22px}
-  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;background:#fff}
-  .gbtn:hover{background:#f8fafc}
-
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:99px;padding:10px 18px;font-size:12px;z-index:60;box-shadow:0 8px 24px rgba(15,23,42,.22)}
-  .foot{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:36px}
-  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+:root{--paper:#fff;--bg:#eceff4;--ink:#0f172a;--muted:#64748b;--faint:#94a3b8;--line:#e2e8f0;--line2:#cbd5e1;--ok:#059669;--ok-soft:#ecfdf5;--bad:#e11d48;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;--r:14px}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 56px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:99px;background:var(--faint);flex:none}.dot.live{background:var(--ok)}
+.who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.who img{width:24px;height:24px;border-radius:99px}
+.tr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;transition:background .15s;white-space:nowrap}
+.btn-dark{background:var(--ink);color:#fff}.btn-dark:hover{background:#334155}
+.btn-line{border:1px solid var(--line);background:var(--paper);color:var(--muted)}.btn-line:hover{background:#f8fafc}
+.btn-wide{width:100%;padding:12px;font-size:14px;border-radius:12px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:26px}
+.panel-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.total{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:clamp(30px,8vw,56px);font-weight:700;letter-spacing:-.03em;margin:6px 0 2px}
+.sub{margin:0;font-size:13px;color:var(--muted)}
+.goalrow{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:26px;gap:12px}
+.bar{height:12px;border-radius:99px;background:#f1f5f9;overflow:hidden;margin-top:8px}
+.bar span{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.left{margin:8px 0 0;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden;margin-top:24px}
+.stat{background:var(--paper);padding:12px 6px;text-align:center}.stat p{margin:0}
+.stat .k{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.stat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;margin-top:3px}
+.cols{display:grid;grid-template-columns:1fr;gap:22px;margin-top:22px;align-items:start}
+@media(min-width:940px){.cols{grid-template-columns:1.55fr 1fr}}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.tagbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.chip:hover{background:#f8fafc}.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip .sw{width:8px;height:8px;border-radius:99px;flex:none}.chip.manage{border-style:dashed}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:560px){.grid{grid-template-columns:1fr 1fr}}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.thumb{position:relative;height:132px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img.full{width:100%;height:100%;object-fit:cover}.thumb img.ico{width:44px;height:44px;object-fit:contain}
+.thumb .ph{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.15em}
+.badge{position:absolute;top:8px;left:8px;background:var(--ok);color:#fff;border-radius:99px;padding:3px 8px;font-family:var(--mono);font-size:10px;font-weight:700}
+.tools{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.card:hover .tools,.card:focus-within .tools{opacity:1}
+.tool{background:rgba(255,255,255,.94);border-radius:99px;width:26px;height:26px;display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.tool:hover{color:var(--ink)}.tool.del:hover{color:var(--bad)}
+.cbody{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1}
+.cname{margin:0;font-size:14px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cprice{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;margin:0}
+.tags{display:flex;flex-wrap:wrap;gap:4px}.tag{border-radius:99px;padding:2px 8px;font-size:11px;font-weight:600}
+.host{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;color:var(--faint);align-self:flex-start}
+.empty{border:1px dashed var(--line2);border-radius:var(--r);background:var(--paper);padding:40px 20px;text-align:center}
+.empty p{margin:0 0 4px}.et{font-size:14px;font-weight:600}.ed{font-size:12px;color:var(--muted);margin-bottom:16px}
+.receipt{background:var(--paper);border-radius:10px 10px 0 0;padding:22px 20px 8px}
+.r-title{text-align:center;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.3em;margin:0}
+.r-sub{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);margin:4px 0 0}
+.tear{border-top:1px dashed var(--line2);margin:14px 0}
+.lines{list-style:none;margin:0;padding:0;max-height:340px;overflow-y:auto}
+.rl{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-family:var(--mono);font-size:12px}
+.rl .rd{color:var(--faint);flex:none}.rl .rn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rl .ru{opacity:0;color:var(--faint);font-size:11px;flex:none}.rl:hover .ru,.rl:focus-within .ru{opacity:1}.rl .ru:hover{color:var(--bad)}
+.rl .rp{font-variant-numeric:tabular-nums;font-weight:700;flex:none}
+.r-total{display:flex;justify-content:space-between;font-family:var(--mono);font-size:14px;font-weight:700}
+.r-foot{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);margin:12px 0 0}
+.zig{display:block;width:100%;height:12px}
+.brk{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-top:16px}
+.brk-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:baseline;margin-top:10px}
+.brk-row .lbl{font-size:12px;font-weight:600}.brk-row .amt{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
+.brk-bar{grid-column:1/-1;height:6px;border-radius:99px;background:#f1f5f9;overflow:hidden}.brk-bar span{display:block;height:100%;border-radius:99px}
+.veil{position:fixed;inset:0;z-index:40;background:rgba(15,23,42,.42);display:flex;align-items:flex-end;justify-content:center;padding:14px}
+@media(min-width:560px){.veil{align-items:center}}
+.modal{position:relative;background:var(--paper);border-radius:18px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto}
+.modal.wide{max-width:640px}
+.modal .x{position:absolute;right:14px;top:12px;color:var(--faint);font-size:18px;line-height:1}.modal .x:hover{color:var(--ink)}
+label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:16px 0 6px}
+.in{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;background:#fff}
+.in:focus{outline:2px solid var(--ink);outline-offset:0;border-color:transparent}
+.in.mono{font-family:var(--mono)}.irow{display:flex;gap:8px}.irow .in{flex:1}
+.pv{display:flex;gap:12px;align-items:center;background:#f8fafc;border-radius:10px;padding:10px;margin-top:10px}
+.pv .box{width:54px;height:54px;border-radius:8px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none}
+.pv .box img{max-width:100%;max-height:100%;object-fit:cover}.pv small{display:block;font-size:11px;color:var(--faint)}
+.picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.actions{display:flex;gap:8px;margin-top:24px}.actions .btn{flex:1;padding:11px;border-radius:11px;font-size:14px}
+.term{text-align:center}
+.tamt{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:38px;font-weight:700;margin:4px 0 0}
+.hold{position:relative;width:100%;overflow:hidden;border-radius:12px;background:var(--ink);color:#fff;padding:15px;font-size:14px;font-weight:700;margin-top:22px;touch-action:none;user-select:none}
+.hold .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ok)}.hold .lb{position:relative}
+.stamp{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ok);color:var(--ok);border-radius:9px;padding:8px 16px;font-family:var(--mono);font-weight:700;letter-spacing:.2em;transform:rotate(-7deg);animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:rotate(-7deg) scale(.6);opacity:0}to{transform:rotate(-7deg) scale(1);opacity:1}}
+.gate{max-width:400px;margin:10vh auto;text-align:center;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:34px 26px}
+.gate h1{font-size:20px;margin:14px 0 6px}.gate p{font-size:13px;color:var(--muted);margin:0 0 22px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;background:#fff;margin-bottom:10px}
+.gbtn:hover{background:#f8fafc}
+.setup{max-width:500px;margin:6vh auto;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:28px}
+.setup h1{font-size:18px;margin:10px 0 6px}
+.setup .desc{font-size:13px;color:var(--muted);margin:0 0 6px;line-height:1.7}
+.hint{font-size:12px;color:var(--muted);background:#f8fafc;border-radius:10px;padding:12px 14px;line-height:1.8;margin:10px 0 0}
+.hint b{color:var(--ink)}.hint code{font-family:var(--mono);background:var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+.paste-area{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--mono);font-size:12px;min-height:140px;resize:vertical;background:#f8fafc;margin-top:6px}
+.paste-area:focus{outline:2px solid var(--ink);border-color:transparent;background:#fff}
+.setup-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.setup-actions .btn{flex:1;padding:11px;border-radius:11px;font-size:14px;min-width:120px}
+/* 리포트 */
+.rpt-nav{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.rpt-nav button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--paper);font-size:14px;display:grid;place-items:center}
+.rpt-nav button:hover{background:#f8fafc}.rpt-nav button:disabled{opacity:.3;cursor:default}
+.rpt-nav .ml{font-family:var(--mono);font-size:14px;font-weight:700;min-width:80px;text-align:center}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:440px){.kpi-grid{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:#f8fafc;border-radius:12px;padding:14px 10px;text-align:center}
+.kpi .kv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;margin:4px 0 0}
+.kpi .kk{font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--faint)}
+.insight{background:var(--ok-soft);border:1px solid #a7f3d0;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.75;color:#065f46;margin-top:14px}
+.insight strong{color:#047857}
+.rpt-sec{margin-top:22px}
+.rpt-sec h3{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin:0 0 12px}
+.rbar-row{display:grid;grid-template-columns:72px 1fr auto;align-items:center;gap:8px;margin-bottom:8px}
+.rbar-row .rl2{font-size:12px;font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbar-row .rb{height:8px;border-radius:99px;background:#f1f5f9;overflow:hidden}.rbar-row .rb span{display:block;height:100%;border-radius:99px}
+.rbar-row .ra{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.ti{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.ti:last-child{border-bottom:0}
+.ti .tn{font-family:var(--mono);font-size:11px;color:var(--faint);width:18px;flex:none}
+.ti .tm{flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ti .tc{font-size:11px;color:var(--muted)}.ti .tp{font-family:var(--mono);font-size:12px;font-weight:700;flex:none}
+.nodata{text-align:center;padding:40px 0;font-size:13px;color:var(--faint)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:99px;padding:10px 18px;font-size:12px;z-index:60;box-shadow:0 8px 24px rgba(15,23,42,.22);white-space:nowrap}
+.foot{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:36px}
+@media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 </style>
 </head>
 <body>
 <div class="wrap" id="root"></div>
-
 <script type="module">
-/* =====================================================================
-   1) 파이어베이스 설정 — 콘솔에서 복사한 값을 여기에 붙여 넣으세요.
-      비워 두면 로그인 없이 이 브라우저에만 저장하는 모드로 돕니다.
-   ===================================================================== */
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
-};
+const HOLD_MS=1200;
+const PALETTE=["#e11d48","#ea580c","#ca8a04","#059669","#0891b2","#4f46e5","#9333ea","#64748b"];
+const STARTER=[{id:"t_clothes",name:"옷",color:"#4f46e5"},{id:"t_food",name:"음식",color:"#ea580c"},{id:"t_movie",name:"영화",color:"#9333ea"},{id:"t_tech",name:"전자기기",color:"#0891b2"}];
+const LS_CFG="nobuy:fbconfig", LS_DAT="nobuy:v2";
 
-const HOLD_MS = 1200;
-const PALETTE = ["#e11d48","#ea580c","#ca8a04","#059669","#0891b2","#4f46e5","#9333ea","#64748b"];
-const STARTER_TAGS = [
-  { id:"t_clothes", name:"옷",     color:"#4f46e5" },
-  { id:"t_food",    name:"음식",   color:"#ea580c" },
-  { id:"t_movie",   name:"영화",   color:"#9333ea" },
-  { id:"t_tech",    name:"전자기기", color:"#0891b2" },
-];
+const won=n=>"₩"+new Intl.NumberFormat("ko-KR").format(Math.round(n||0));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const dkey=t=>new Date(t).toISOString().slice(0,10);
+const mkey=t=>new Date(t).toISOString().slice(0,7);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $=s=>document.querySelector(s);
+const blank=()=>({goal:{amount:1000000,label:""},tags:STARTER.slice(),items:[],logs:[]});
 
-const won = n => "₩" + new Intl.NumberFormat("ko-KR").format(Math.round(n||0));
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const dkey = t => new Date(t).toISOString().slice(0,10);
-const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const $ = s => document.querySelector(s);
+let state=blank(),filter=null,user=null,mode="local",synced=false,toastTmr=null;
+let reportYM=new Date().toISOString().slice(0,7);
+let fb=null,saveTmr=null,unsub=null;
 
-const blank = () => ({ goal:{amount:1000000,label:""}, tags:STARTER_TAGS.slice(), items:[], logs:[] });
+/* ── Firebase ── */
+const loadCfg=()=>{try{return JSON.parse(localStorage.getItem(LS_CFG)||"null");}catch{return null;}};
+const saveCfg=c=>localStorage.setItem(LS_CFG,JSON.stringify(c));
 
-let state = blank();
-let filter = null;            // 화면에서만 쓰는 태그 필터
-let user = null;              // 로그인 사용자
-let mode = "local";           // "cloud" | "local"
-let synced = false;
-let toastTimer = null;
-
-/* =====================================================================
-   2) 저장 계층 — 로그인하면 파이어스토어 실시간 동기화, 아니면 로컬
-   ===================================================================== */
-let fb = null, saveTimer = null, unsub = null;
-
-async function initFirebase(){
-  if(!FIREBASE_CONFIG.apiKey) return null;
-  const [app, auth, fs] = await Promise.all([
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-  ]);
-  const a = app.initializeApp(FIREBASE_CONFIG);
-  return { a, auth, fs, authInst: auth.getAuth(a), db: fs.getFirestore(a) };
+async function initFB(cfg){
+  if(!cfg?.apiKey)return null;
+  try{
+    const[app,auth,fs]=await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+    ]);
+    const a=app.initializeApp(cfg);
+    return{a,auth,fs,authInst:auth.getAuth(a),db:fs.getFirestore(a)};
+  }catch(e){console.error(e);return null;}
 }
 
 function watchCloud(){
-  const { fs, db } = fb;
-  const ref = fs.doc(db, "savers", user.uid);
-  unsub = fs.onSnapshot(ref, snap => {
-    if(snap.metadata.hasPendingWrites) return;      // 내가 방금 쓴 건 무시
-    if(snap.exists()){
-      const d = snap.data();
-      state = { goal:d.goal||blank().goal, tags:d.tags||[], items:d.items||[], logs:d.logs||[] };
-    }else{
-      queueSave();
-    }
-    synced = true;
-    render();
-  }, () => toast("동기화가 끊겼습니다. 연결을 확인해 주세요."));
+  const{fs,db}=fb,ref=fs.doc(db,"savers",user.uid);
+  unsub=fs.onSnapshot(ref,snap=>{
+    if(snap.metadata.hasPendingWrites)return;
+    if(snap.exists()){const d=snap.data();state={goal:d.goal||blank().goal,tags:d.tags||[],items:d.items||[],logs:d.logs||[]};}
+    else queueSave();
+    synced=true;render();
+  },()=>toast("동기화가 끊겼습니다."));
 }
 
 function queueSave(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    const payload = { ...state, updatedAt: Date.now() };
-    if(mode === "cloud" && user){
-      try{
-        await fb.fs.setDoc(fb.fs.doc(fb.db, "savers", user.uid), payload);
-      }catch{ toast("저장하지 못했습니다. 잠시 후 다시 시도해 주세요."); }
-    }else{
-      try{ localStorage.setItem("nobuy:v2", JSON.stringify(payload)); }catch{}
-    }
-  }, 400);
+  clearTimeout(saveTmr);
+  saveTmr=setTimeout(async()=>{
+    const p={...state,updatedAt:Date.now()};
+    if(mode==="cloud"&&user){try{await fb.fs.setDoc(fb.fs.doc(fb.db,"savers",user.uid),p);}catch{toast("저장하지 못했습니다.");}}
+    else{try{localStorage.setItem(LS_DAT,JSON.stringify(p));}catch{}}
+  },400);
 }
+function loadLocal(){try{const r=localStorage.getItem(LS_DAT);if(r)state={...blank(),...JSON.parse(r)};}catch{}}
 
-function loadLocal(){
-  try{
-    const raw = localStorage.getItem("nobuy:v2");
-    if(raw) state = { ...blank(), ...JSON.parse(raw) };
-  }catch{}
-}
-
-/* =====================================================================
-   3) 링크 미리보기 / 이미지 축소
-   ===================================================================== */
+/* ── 미리보기 ── */
 async function fetchPreview(raw){
-  let u;
-  try{ u = new URL(raw.startsWith("http") ? raw : "https://"+raw); }catch{ return null; }
-  const host = u.hostname.replace(/^www\./,"");
-  const fav = `https://www.google.com/s2/favicons?domain=${host}&sz=128`;
+  let u;try{u=new URL(raw.startsWith("http")?raw:"https://"+raw);}catch{return null;}
+  const host=u.hostname.replace(/^www\./,"");
+  const fav=`https://www.google.com/s2/favicons?domain=${host}&sz=128`;
   try{
-    const r = await fetch("https://api.microlink.io/?url=" + encodeURIComponent(u.href));
-    if(r.ok){
-      const j = await r.json();
-      const img = j?.data?.image?.url || j?.data?.logo?.url;
-      if(img) return { url:u.href, host, image:img, title:j?.data?.title||"", exact:true };
-      return { url:u.href, host, image:fav, title:j?.data?.title||"", exact:false };
-    }
+    const r=await fetch("https://api.microlink.io/?url="+encodeURIComponent(u.href));
+    if(r.ok){const j=await r.json();const img=j?.data?.image?.url||j?.data?.logo?.url;
+      if(img)return{url:u.href,host,image:img,title:j?.data?.title||"",exact:true};
+      return{url:u.href,host,image:fav,title:j?.data?.title||"",exact:false};}
   }catch{}
-  return { url:u.href, host, image:fav, title:"", exact:false };
+  return{url:u.href,host,image:fav,title:"",exact:false};
 }
-
 function shrinkImage(file){
-  return new Promise((res, rej) => {
-    const fr = new FileReader();
-    fr.onload = () => {
-      const im = new Image();
-      im.onload = () => {
-        const s = Math.min(1, 420/Math.max(im.width, im.height));
-        const c = document.createElement("canvas");
-        c.width = Math.round(im.width*s); c.height = Math.round(im.height*s);
-        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
-        res(c.toDataURL("image/jpeg", .72));
-      };
-      im.onerror = () => rej();
-      im.src = fr.result;
-    };
-    fr.onerror = () => rej();
-    fr.readAsDataURL(file);
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,420/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.72));};im.onerror=()=>rej();im.src=fr.result;};
+    fr.onerror=()=>rej();fr.readAsDataURL(file);
   });
 }
 
-/* =====================================================================
-   4) 계산
-   ===================================================================== */
-const tagById = id => state.tags.find(t => t.id === id);
-const total = () => state.logs.reduce((s,l) => s + l.price, 0);
+/* ── 계산 ── */
+const tagById=id=>state.tags.find(t=>t.id===id);
+const total=()=>state.logs.reduce((s,l)=>s+l.price,0);
 
 function stats(){
-  const mk = new Date().toISOString().slice(0,7);
-  const month = state.logs.filter(l => dkey(l.at).startsWith(mk)).reduce((s,l)=>s+l.price,0);
-  const days = new Set(state.logs.map(l => dkey(l.at)));
-  const c = new Date(); let streak = 0;
-  if(!days.has(dkey(c))) c.setDate(c.getDate()-1);
-  while(days.has(dkey(c))){ streak++; c.setDate(c.getDate()-1); }
-  return { month, streak, count: state.logs.length };
+  const mk=new Date().toISOString().slice(0,7);
+  const month=state.logs.filter(l=>dkey(l.at).startsWith(mk)).reduce((s,l)=>s+l.price,0);
+  const days=new Set(state.logs.map(l=>dkey(l.at)));
+  const c=new Date();let streak=0;
+  if(!days.has(dkey(c)))c.setDate(c.getDate()-1);
+  while(days.has(dkey(c))){streak++;c.setDate(c.getDate()-1);}
+  return{month,streak,count:state.logs.length};
 }
 
-function byTag(){
-  const m = new Map();
-  for(const l of state.logs){
-    const ids = (l.tags && l.tags.length) ? l.tags : ["__none"];
-    for(const id of ids) m.set(id, (m.get(id)||0) + l.price);
-  }
-  return [...m.entries()]
-    .map(([id,sum]) => {
-      const t = id === "__none" ? { name:"태그 없음", color:"#cbd5e1" } : tagById(id);
-      return t ? { name:t.name, color:t.color, sum } : null;
-    })
-    .filter(Boolean)
-    .sort((a,b) => b.sum - a.sum);
+function byTag(logs){
+  const m=new Map();
+  for(const l of logs){const ids=(l.tags&&l.tags.length)?l.tags:["__none"];for(const id of ids)m.set(id,(m.get(id)||0)+l.price);}
+  return[...m.entries()].map(([id,sum])=>{const t=id==="__none"?{name:"태그 없음",color:"#cbd5e1"}:tagById(id);return t?{name:t.name,color:t.color,sum}:null;}).filter(Boolean).sort((a,b)=>b.sum-a.sum);
 }
 
-/* =====================================================================
-   5) 화면
-   ===================================================================== */
+function reportData(ym){
+  const logs=state.logs.filter(l=>mkey(l.at)===ym);
+  if(!logs.length)return null;
+  const tot=logs.reduce((s,l)=>s+l.price,0);
+  const days=new Set(logs.map(l=>dkey(l.at))).size;
+  const tagRows=byTag(logs);
+  const itemMap=new Map();
+  for(const l of logs){if(!l.itemId)continue;const e=itemMap.get(l.itemId)||{name:l.name,count:0,sum:0};e.count++;e.sum+=l.price;itemMap.set(l.itemId,e);}
+  const topItems=[...itemMap.values()].sort((a,b)=>b.count-a.count).slice(0,5);
+  const topTag=tagRows[0],topItem=topItems[0];
+  let insight=`이번 달 총 <strong>${won(tot)}</strong>을 참았습니다. `;
+  if(topTag)insight+=`가장 많이 참은 카테고리는 <strong>${esc(topTag.name)}</strong>으로 ${Math.round(topTag.sum/tot*100)}%를 차지합니다. `;
+  if(topItem)insight+=`<strong>${esc(topItem.name)}</strong>을(를) ${topItem.count}번 참았습니다. `;
+  insight+=`참은 날 하루 평균 <strong>${won(Math.round(tot/days))}</strong>씩 절약했습니다.`;
+  return{tot,days,count:logs.length,tagRows,topItems,insight};
+}
+
+/* ── 렌더 ── */
 function render(){
-  if(mode === "cloud" && !user){ $("#root").innerHTML = gateHTML(); return; }
-  const t = total(), g = state.goal.amount||0, pct = g>0 ? t/g*100 : 0, st = stats();
-  const items = filter ? state.items.filter(i => (i.tags||[]).includes(filter)) : state.items;
+  if(mode==="setup"){$("#root").innerHTML=setupHTML();return;}
+  if(mode==="cloud"&&!user){$("#root").innerHTML=gateHTML();return;}
+  mainRender();
+}
 
-  $("#root").innerHTML = `
-  <div class="topbar">
-    <div class="brand"><span class="dot ${mode==="cloud"&&synced?"live":""}"></span>안 사기 계좌</div>
-    ${ mode==="cloud" ? `
-      <div class="who">
-        ${user.photoURL?`<img src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">`:""}
-        <span>${esc(user.displayName||user.email||"")}</span>
-        <button class="btn btn-line" data-act="signout">로그아웃</button>
-      </div>` : `<span class="who">이 브라우저에만 저장 중</span>` }
+function mainRender(){
+  const t=total(),g=state.goal.amount||0,pct=g>0?t/g*100:0,st=stats();
+  const items=filter?state.items.filter(i=>(i.tags||[]).includes(filter)):state.items;
+  $("#root").innerHTML=`
+<div class="topbar">
+  <div class="brand"><span class="dot ${mode==="cloud"&&synced?"live":""}"></span>안 사기 계좌</div>
+  <div class="tr">
+    <button class="btn btn-line" data-act="report">📊 월별 리포트</button>
+    ${mode==="cloud"?`<div class="who">${user.photoURL?`<img src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">`:""}<span>${esc(user.displayName||user.email||"")}</span><button class="btn btn-line" data-act="signout">로그아웃</button></div>`
+    :`<button class="btn btn-line" data-act="configure">⚙ 동기화 설정</button>`}
   </div>
-
-  <section class="panel">
-    <div class="panel-top">
-      <div>
-        <p class="eyebrow">참아서 남긴 돈</p>
-        <p class="total">${won(t)}</p>
-        <p class="sub">${st.count}번 결제하고 한 번도 빠져나가지 않았습니다.</p>
-      </div>
-      <button class="btn btn-line" data-act="goal">목표 설정</button>
+</div>
+<section class="panel">
+  <div class="panel-top">
+    <div><p class="eyebrow">참아서 남긴 돈</p><p class="total">${won(t)}</p><p class="sub">${st.count}번 결제하고 한 번도 빠져나가지 않았습니다.</p></div>
+    <button class="btn btn-line" data-act="goal">목표 설정</button>
+  </div>
+  <div class="goalrow"><span>${esc(state.goal.label||"목표")} · ${won(g)}</span><b class="num">${pct.toFixed(1)}%</b></div>
+  <div class="bar"><span style="width:${Math.min(100,t>0?Math.max(pct,1.5):0)}%"></span></div>
+  <p class="left">${t>=g&&g>0?"목표를 채웠습니다. 이제 진짜로 사도 됩니다.":won(g-t)+" 남았습니다"}</p>
+  <div class="stats">
+    <div class="stat"><p class="k">이번 달</p><p class="v">${won(st.month)}</p></div>
+    <div class="stat"><p class="k">참은 횟수</p><p class="v">${st.count}회</p></div>
+    <div class="stat"><p class="k">연속</p><p class="v">${st.streak>=2?"🔥 ":""}${st.streak}일</p></div>
+  </div>
+</section>
+<div class="cols">
+  <section>
+    <div class="sec-head"><p class="eyebrow">참는 중 · ${state.items.length}</p><button class="btn btn-dark" data-act="add">+ 사고 싶은 것 담기</button></div>
+    <div class="tagbar">
+      <button class="chip ${!filter?"on":""}" data-act="filter" data-id="">전체</button>
+      ${state.tags.map(t=>`<button class="chip ${filter===t.id?"on":""}" data-act="filter" data-id="${t.id}"><i class="sw" style="background:${t.color}"></i>${esc(t.name)}</button>`).join("")}
+      <button class="chip manage" data-act="tags">태그 관리</button>
     </div>
-
-    <div class="goalrow">
-      <span>${esc(state.goal.label || "목표")} · ${won(g)}</span>
-      <b class="num">${pct.toFixed(1)}%</b>
-    </div>
-    <div class="bar"><span style="width:${Math.min(100, t>0?Math.max(pct,1.5):0)}%"></span></div>
-    <p class="left">${ t>=g && g>0 ? "목표를 채웠습니다. 이제 진짜로 사도 됩니다." : won(g-t)+" 남았습니다" }</p>
-
-    <div class="stats">
-      <div class="stat"><p class="k">이번 달</p><p class="v">${won(st.month)}</p></div>
-      <div class="stat"><p class="k">참은 횟수</p><p class="v">${st.count}회</p></div>
-      <div class="stat"><p class="k">연속</p><p class="v">${st.streak>=2?"🔥 ":""}${st.streak}일</p></div>
-    </div>
+    ${items.length?`<div class="grid">${items.map(cardHTML).join("")}</div>`:`<div class="empty"><p class="et">${filter?"이 태그에는 담아 둔 게 없습니다.":"먼저 담아야 참을 수 있습니다."}</p><p class="ed">${filter?"다른 태그를 보거나 새로 담아 보세요.":"지금 사고 싶은 물건의 이름과 가격을 넣어 보세요."}</p><button class="btn btn-dark" data-act="add">담기</button></div>`}
   </section>
-
-  <div class="cols">
-    <section>
-      <div class="sec-head">
-        <p class="eyebrow">참는 중 · ${state.items.length}</p>
-        <button class="btn btn-dark" data-act="add">+ 사고 싶은 것 담기</button>
-      </div>
-
-      <div class="tagbar">
-        <button class="chip ${!filter?"on":""}" data-act="filter" data-id="">전체</button>
-        ${state.tags.map(t => `
-          <button class="chip ${filter===t.id?"on":""}" data-act="filter" data-id="${t.id}">
-            <i class="swatch" style="background:${t.color}"></i>${esc(t.name)}
-          </button>`).join("")}
-        <button class="chip manage" data-act="tags">태그 관리</button>
-      </div>
-
-      ${ items.length ? `<div class="grid">${items.map(cardHTML).join("")}</div>` : `
-        <div class="empty">
-          <p class="t">${filter ? "이 태그에는 담아 둔 게 없습니다." : "먼저 담아야 참을 수 있습니다."}</p>
-          <p class="d">${filter ? "다른 태그를 보거나 새로 담아 보세요." : "지금 사고 싶은 물건의 이름과 가격을 넣어 보세요. 링크를 넣으면 사진도 같이 붙습니다."}</p>
-          <button class="btn btn-dark" data-act="add">담기</button>
-        </div>` }
-    </section>
-
-    <section>
-      <p class="eyebrow" style="margin-bottom:10px">안 사기 영수증</p>
-      ${receiptHTML(t)}
-      ${breakdownHTML(t)}
-    </section>
-  </div>
-
-  <p class="foot">이 앱은 돈을 옮기지 않습니다. 결제 버튼은 아무것도 결제하지 않습니다.</p>`;
+  <section>
+    <p class="eyebrow" style="margin-bottom:10px">안 사기 영수증</p>
+    ${receiptHTML(t)}
+    ${breakdownHTML(t)}
+  </section>
+</div>
+<p class="foot">이 앱은 돈을 옮기지 않습니다. 결제 버튼은 아무것도 결제하지 않습니다.</p>`;
 }
 
 function cardHTML(i){
-  const tags = (i.tags||[]).map(tagById).filter(Boolean);
-  return `
-  <article class="card">
-    <div class="thumb">
-      ${ i.image
-          ? `<img class="${i.exact?"full":"icon"}" src="${esc(i.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
-          : `<span class="ph">NO IMAGE</span>` }
-      ${ i.resisted ? `<span class="badge">${i.resisted}번 참음</span>` : "" }
-      <div class="tools">
-        <button class="tool" data-act="edit" data-id="${i.id}" aria-label="수정">✎</button>
-        <button class="tool del" data-act="del" data-id="${i.id}" aria-label="삭제">🗑</button>
-      </div>
-    </div>
-    <div class="body">
-      <h3 class="name">${esc(i.name)}</h3>
-      <p class="price" style="margin:0">${won(i.price)}</p>
-      ${ tags.length ? `<div class="tags">${tags.map(t =>
-          `<span class="tag" style="background:${t.color}1a;color:${t.color}">${esc(t.name)}</span>`).join("")}</div>` : "" }
-      ${ i.host ? `<button class="host" data-act="blocked">🔒 ${esc(i.host)}</button>` : "" }
-      <button class="btn btn-dark btn-wide pay" data-act="pay" data-id="${i.id}">결제하기</button>
-    </div>
-  </article>`;
+  const tgs=(i.tags||[]).map(tagById).filter(Boolean);
+  return`<article class="card"><div class="thumb">${i.image?`<img class="${i.exact?"full":"ico"}" src="${esc(i.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:`<span class="ph">NO IMAGE</span>`}${i.resisted?`<span class="badge">${i.resisted}번 참음</span>`:""}<div class="tools"><button class="tool" data-act="edit" data-id="${i.id}">✎</button><button class="tool del" data-act="del" data-id="${i.id}">🗑</button></div></div><div class="cbody"><h3 class="cname">${esc(i.name)}</h3><p class="cprice">${won(i.price)}</p>${tgs.length?`<div class="tags">${tgs.map(t=>`<span class="tag" style="background:${t.color}1a;color:${t.color}">${esc(t.name)}</span>`).join("")}</div>`:""
+  }${i.host?`<button class="host" data-act="blocked">🔒 ${esc(i.host)}</button>`:""}<button class="btn btn-dark btn-wide" style="margin-top:auto" data-act="pay" data-id="${i.id}">결제하기</button></div></article>`;
 }
 
 function receiptHTML(t){
-  return `
-  <div>
-    <div class="receipt">
-      <p class="r-title">SAVED</p>
-      <p class="r-sub">결제하지 않은 항목의 내역</p>
-      <div class="tear"></div>
-      ${ state.logs.length ? `<ul class="lines">${state.logs.map(l => `
-        <li class="line">
-          <span class="d">${new Date(l.at).toLocaleDateString("ko-KR",{month:"2-digit",day:"2-digit"})}</span>
-          <span class="n">${esc(l.name)}</span>
-          <button class="u" data-act="undo" data-id="${l.id}" aria-label="이 줄 지우기">↩</button>
-          <span class="p">${won(l.price)}</span>
-        </li>`).join("")}</ul>`
-      : `<p style="text-align:center;font-family:var(--mono);font-size:12px;color:var(--faint);padding:26px 0;margin:0">아직 인쇄된 줄이 없습니다</p>` }
-      <div class="tear"></div>
-      <div class="r-total"><span style="letter-spacing:.2em">합계</span><span class="num">${won(t)}</span></div>
-      <p class="r-foot">출금액 ₩0 · 감사합니다</p>
-    </div>
-    <svg class="zig" viewBox="0 0 100 3" preserveAspectRatio="none" aria-hidden="true">
-      <polygon fill="#ffffff" points="0,0 100,0 100,1 96,3 92,1 88,3 84,1 80,3 76,1 72,3 68,1 64,3 60,1 56,3 52,1 48,3 44,1 40,3 36,1 32,3 28,1 24,3 20,1 16,3 12,1 8,3 4,1 0,3"/>
-    </svg>
-  </div>`;
+  return`<div><div class="receipt"><p class="r-title">SAVED</p><p class="r-sub">결제하지 않은 항목의 내역</p><div class="tear"></div>${state.logs.length?`<ul class="lines">${state.logs.map(l=>`<li class="rl"><span class="rd">${new Date(l.at).toLocaleDateString("ko-KR",{month:"2-digit",day:"2-digit"})}</span><span class="rn">${esc(l.name)}</span><button class="ru" data-act="undo" data-id="${l.id}">↩</button><span class="rp">${won(l.price)}</span></li>`).join("")}</ul>`:`<p style="text-align:center;font-family:var(--mono);font-size:12px;color:var(--faint);padding:26px 0;margin:0">아직 인쇄된 줄이 없습니다</p>`}<div class="tear"></div><div class="r-total"><span style="letter-spacing:.2em">합계</span><span class="num">${won(t)}</span></div><p class="r-foot">출금액 ₩0 · 감사합니다</p></div><svg class="zig" viewBox="0 0 100 3" preserveAspectRatio="none" aria-hidden="true"><polygon fill="#ffffff" points="0,0 100,0 100,1 96,3 92,1 88,3 84,1 80,3 76,1 72,3 68,1 64,3 60,1 56,3 52,1 48,3 44,1 40,3 36,1 32,3 28,1 24,3 20,1 16,3 12,1 8,3 4,1 0,3"/></svg></div>`;
 }
 
 function breakdownHTML(t){
-  const rows = byTag();
-  if(!rows.length) return "";
-  const max = rows[0].sum || 1;
-  return `
-  <div class="brk">
-    <p class="eyebrow">무엇을 참았나</p>
-    ${rows.map(r => `
-      <div class="brk-row">
-        <span class="lbl" style="color:${r.color}">${esc(r.name)}</span>
-        <span class="amt">${won(r.sum)} · ${Math.round(r.sum/t*100)}%</span>
-        <div class="brk-bar"><span style="width:${r.sum/max*100}%;background:${r.color}"></span></div>
-      </div>`).join("")}
-  </div>`;
+  const rows=byTag(state.logs);if(!rows.length)return"";const mx=rows[0].sum||1;
+  return`<div class="brk"><p class="eyebrow">무엇을 참았나</p>${rows.map(r=>`<div class="brk-row"><span class="lbl" style="color:${r.color}">${esc(r.name)}</span><span class="amt">${won(r.sum)} · ${Math.round(r.sum/t*100)}%</span><div class="brk-bar"><span style="width:${r.sum/mx*100}%;background:${r.color}"></span></div></div>`).join("")}</div>`;
+}
+
+function setupHTML(){
+  return`<div class="setup">
+<p class="eyebrow">Firebase 연결 설정</p>
+<h1>구글 계정으로 동기화하기</h1>
+<p class="desc">Firebase 콘솔에서 복사한 설정 코드를 아래에 붙여 넣으세요.<br>한 번 저장하면 다음부터는 자동으로 연결됩니다.</p>
+<div class="hint">
+  <b>설정 코드 찾는 방법</b><br>
+  1. <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> 접속<br>
+  2. 왼쪽 위 <b>⚙️ → 프로젝트 설정</b> 클릭<br>
+  3. 아래로 스크롤 → <b>내 앱</b> 섹션 → <b>구성</b> 라디오 선택<br>
+  4. <code>const firebaseConfig = { … }</code> 부분 전체 복사 → 아래에 붙여넣기
+</div>
+<label class="f">설정 코드 붙여넣기</label>
+<textarea class="paste-area" id="cfg-paste" spellcheck="false" placeholder='const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "my-app.firebaseapp.com",
+  projectId: "my-app",
+  appId: "1:123...:web:abc..."
+};'></textarea>
+<p id="cfg-err" style="color:var(--bad);font-size:12px;margin:6px 0 0;display:none"></p>
+<div class="setup-actions">
+  <button class="btn btn-line" data-act="setup-skip">나중에 (로컬 저장)</button>
+  <button class="btn btn-dark" data-act="setup-save">저장하고 로그인</button>
+</div>
+</div>`;
 }
 
 function gateHTML(){
-  return `
-  <div class="gate">
-    <p class="eyebrow">안 사기 계좌</p>
-    <h1>결제하되, 돈은 두고 갑니다</h1>
-    <p>구글 계정으로 들어오면 휴대폰과 노트북에서 같은 목록을 실시간으로 봅니다.</p>
-    <button class="gbtn" data-act="signin">
-      <svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.3z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.5-5.2l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8 41.5 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.4c-.4-1.3-.7-2.7-.7-4.4s.3-3.1.7-4.4v-5.7H4.5C2.9 17 2 20.4 2 24s.9 7 2.5 10.1l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.3 30 2 24 2 15.4 2 8 6.5 4.5 13.9l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>
-      구글로 계속하기
-    </button>
-  </div>`;
+  return`<div class="gate">
+<p class="eyebrow">안 사기 계좌</p>
+<h1>결제하되, 돈은 두고 갑니다</h1>
+<p>구글 계정으로 들어오면 휴대폰과 노트북에서 같은 목록을 실시간으로 봅니다.</p>
+<button class="gbtn" data-act="signin">
+  <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.3z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.5-5.2l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8 41.5 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.4c-.4-1.3-.7-2.7-.7-4.4s.3-3.1.7-4.4v-5.7H4.5C2.9 17 2 20.4 2 24s.9 7 2.5 10.1l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.3 30 2 24 2 15.4 2 8 6.5 4.5 13.9l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>
+  구글로 계속하기
+</button>
+<button class="btn btn-line" style="width:100%;padding:11px;border-radius:12px;font-size:14px" data-act="configure">설정 코드 다시 입력</button>
+</div>`;
 }
 
-/* =====================================================================
-   6) 모달
-   ===================================================================== */
-function modal(inner, onClose){
+/* ── 모달 ── */
+function modal(inner,wide){
   closeModal();
-  const v = document.createElement("div");
-  v.className = "veil";
-  v.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><button class="x" data-close aria-label="닫기">✕</button>${inner}</div>`;
+  const v=document.createElement("div");v.className="veil";
+  v.innerHTML=`<div class="modal${wide?" wide":""}" role="dialog" aria-modal="true"><button class="x" data-close>✕</button>${inner}</div>`;
   document.body.appendChild(v);
-  const close = () => { v.remove(); document.removeEventListener("keydown", key); onClose && onClose(); };
-  const key = e => { if(e.key === "Escape") close(); };
-  document.addEventListener("keydown", key);
-  v.addEventListener("click", e => { if(e.target === v || e.target.hasAttribute("data-close")) close(); });
-  v._close = close;
-  return { el:v.firstElementChild, close };
+  const close=()=>{v.remove();document.removeEventListener("keydown",key);};
+  const key=e=>{if(e.key==="Escape")close();};
+  document.addEventListener("keydown",key);
+  v.addEventListener("click",e=>{if(e.target===v||e.target.hasAttribute("data-close"))close();});
+  v._close=close;return{el:v.firstElementChild,close};
 }
-function closeModal(){ document.querySelectorAll(".veil").forEach(v => v._close ? v._close() : v.remove()); }
+function closeModal(){document.querySelectorAll(".veil").forEach(v=>v._close?v._close():v.remove());}
 
-/* --- 담기 / 수정 --- */
+/* ── 담기/수정 ── */
 function itemDialog(existing){
-  let draft = existing
-    ? { ...existing, tags:[...(existing.tags||[])] }
-    : { name:"", price:"", url:"", host:"", image:"", exact:false, tags:[] };
-
-  const m = modal(`
-    <p class="eyebrow">${existing ? "항목 수정" : "사고 싶은 것 담기"}</p>
-    <label class="f">상품 링크 (선택)</label>
-    <div class="row">
-      <input class="in mono" id="f-url" placeholder="https://…" style="font-size:12px" value="${esc(draft.url)}">
-      <button class="btn btn-line" id="f-fetch">사진 가져오기</button>
-    </div>
+  let draft=existing?{...existing,tags:[...(existing.tags||[])]}:{name:"",price:"",url:"",host:"",image:"",exact:false,tags:[]};
+  const m=modal(`<p class="eyebrow">${existing?"항목 수정":"사고 싶은 것 담기"}</p>
+    <label class="f">상품 링크 (선택)</label><div class="irow"><input class="in mono" id="f-url" placeholder="https://…" style="font-size:12px" value="${esc(draft.url)}"><button class="btn btn-line" id="f-fetch">사진 가져오기</button></div>
     <div id="f-pv"></div>
-    <label class="f">사진 직접 올리기 (선택)</label>
-    <input class="in" type="file" id="f-file" accept="image/*" style="padding:7px;font-size:12px">
-    <label class="f">이름</label>
-    <input class="in" id="f-name" placeholder="무선 이어폰" value="${esc(draft.name)}">
-    <label class="f">가격</label>
-    <input class="in mono" id="f-price" inputmode="numeric" placeholder="179000" value="${esc(draft.price)}">
-    <label class="f">태그</label>
-    <div class="picker" id="f-tags"></div>
-    <div class="row" style="margin-top:8px">
-      <input class="in" id="f-newtag" placeholder="새 태그 이름" style="font-size:13px">
-      <button class="btn btn-line" id="f-addtag">추가</button>
-    </div>
-    <div class="actions">
-      <button class="btn btn-line" data-close>취소</button>
-      <button class="btn btn-dark" id="f-save">${existing ? "저장" : "담기"}</button>
-    </div>`);
-
-  const q = s => m.el.querySelector(s);
-
-  const drawTags = () => {
-    q("#f-tags").innerHTML = state.tags.map(t => {
-      const on = draft.tags.includes(t.id);
-      return `<button class="chip ${on?"on":""}" data-tag="${t.id}"><i class="swatch" style="background:${t.color}"></i>${esc(t.name)}</button>`;
-    }).join("") || `<span style="font-size:12px;color:var(--faint)">아래에서 첫 태그를 만들어 보세요.</span>`;
-  };
-  const drawPv = () => {
-    q("#f-pv").innerHTML = draft.image ? `
-      <div class="pv">
-        <div class="box"><img src="${esc(draft.image)}" alt="" referrerpolicy="no-referrer"></div>
-        <div><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">🔒 ${esc(draft.host||"직접 올린 사진")}</span>
-        <small>주소는 저장만 하고 열리지 않습니다.</small></div>
-      </div>` : "";
-  };
-  drawTags(); drawPv();
-
-  q("#f-tags").addEventListener("click", e => {
-    const b = e.target.closest("[data-tag]"); if(!b) return;
-    const id = b.dataset.tag;
-    draft.tags = draft.tags.includes(id) ? draft.tags.filter(x=>x!==id) : [...draft.tags, id];
-    drawTags();
-  });
-  q("#f-addtag").addEventListener("click", () => {
-    const name = q("#f-newtag").value.trim();
-    if(!name) return toast("태그 이름을 적어 주세요.");
-    if(state.tags.some(t => t.name === name)) return toast("이미 있는 태그입니다.");
-    const t = { id:uid(), name, color:PALETTE[state.tags.length % PALETTE.length] };
-    state.tags.push(t); draft.tags.push(t.id);
-    q("#f-newtag").value = ""; drawTags(); queueSave();
-  });
-  q("#f-newtag").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); q("#f-addtag").click(); }});
-
-  q("#f-fetch").addEventListener("click", async () => {
-    const url = q("#f-url").value.trim(); if(!url) return;
-    q("#f-fetch").textContent = "가져오는 중…";
-    const p = await fetchPreview(url);
-    q("#f-fetch").textContent = "사진 가져오기";
-    if(!p) return toast("주소 형식을 확인해 주세요.");
-    draft = { ...draft, url:p.url, host:p.host, image:p.image, exact:p.exact };
-    if(!q("#f-name").value && p.title) q("#f-name").value = p.title.slice(0,60);
-    drawPv();
-    if(!p.exact) toast("사이트가 사진을 막아 두었습니다. 아래에서 직접 올리세요.");
-  });
-
-  q("#f-file").addEventListener("change", async e => {
-    const f = e.target.files?.[0]; if(!f) return;
-    try{ draft.image = await shrinkImage(f); draft.exact = true; drawPv(); }
-    catch{ toast("이미지를 읽지 못했습니다. 다른 파일을 골라 주세요."); }
-  });
-
-  q("#f-price").addEventListener("input", e => e.target.value = e.target.value.replace(/[^0-9]/g,""));
-
-  q("#f-save").addEventListener("click", () => {
-    const name = q("#f-name").value.trim();
-    const price = Number(q("#f-price").value.replace(/[^0-9]/g,""));
-    if(!name) return toast("이름을 적어 주세요.");
-    if(!price) return toast("가격을 숫자로 적어 주세요.");
-    const url = q("#f-url").value.trim();
-    if(existing){
-      Object.assign(existing, { name, price, url, host:draft.host, image:draft.image, exact:draft.exact, tags:draft.tags });
-    }else{
-      state.items.unshift({ id:uid(), name, price, url, host:draft.host, image:draft.image, exact:draft.exact, tags:draft.tags, resisted:0, createdAt:Date.now() });
-    }
-    queueSave(); m.close(); render();
-    toast(existing ? "수정했습니다." : "담았습니다. 사고 싶어지면 결제 버튼을 길게 누르세요.");
+    <label class="f">사진 직접 올리기 (선택)</label><input class="in" type="file" id="f-file" accept="image/*" style="padding:7px;font-size:12px">
+    <label class="f">이름</label><input class="in" id="f-name" placeholder="무선 이어폰" value="${esc(draft.name)}">
+    <label class="f">가격</label><input class="in mono" id="f-price" inputmode="numeric" placeholder="179000" value="${esc(draft.price)}">
+    <label class="f">태그</label><div class="picker" id="f-tags"></div>
+    <div class="irow" style="margin-top:8px"><input class="in" id="f-newtag" placeholder="새 태그 이름" style="font-size:13px"><button class="btn btn-line" id="f-addtag">추가</button></div>
+    <div class="actions"><button class="btn btn-line" data-close>취소</button><button class="btn btn-dark" id="f-save">${existing?"저장":"담기"}</button></div>`);
+  const q=s=>m.el.querySelector(s);
+  const dT=()=>{q("#f-tags").innerHTML=state.tags.map(t=>`<button class="chip ${draft.tags.includes(t.id)?"on":""}" data-tag="${t.id}"><i class="sw" style="background:${t.color}"></i>${esc(t.name)}</button>`).join("")||`<span style="font-size:12px;color:var(--faint)">아래에서 첫 태그를 만들어 보세요.</span>`;};
+  const dP=()=>{q("#f-pv").innerHTML=draft.image?`<div class="pv"><div class="box"><img src="${esc(draft.image)}" alt="" referrerpolicy="no-referrer"></div><div><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">🔒 ${esc(draft.host||"직접 올린 사진")}</span><small>주소는 저장만 하고 열리지 않습니다.</small></div></div>`:"";};
+  dT();dP();
+  q("#f-tags").addEventListener("click",e=>{const b=e.target.closest("[data-tag]");if(!b)return;const id=b.dataset.tag;draft.tags=draft.tags.includes(id)?draft.tags.filter(x=>x!==id):[...draft.tags,id];dT();});
+  q("#f-addtag").addEventListener("click",()=>{const n=q("#f-newtag").value.trim();if(!n)return toast("태그 이름을 적어 주세요.");if(state.tags.some(t=>t.name===n))return toast("이미 있는 태그입니다.");const t={id:uid(),name:n,color:PALETTE[state.tags.length%PALETTE.length]};state.tags.push(t);draft.tags.push(t.id);q("#f-newtag").value="";dT();queueSave();});
+  q("#f-newtag").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();q("#f-addtag").click();}});
+  q("#f-fetch").addEventListener("click",async()=>{const url=q("#f-url").value.trim();if(!url)return;q("#f-fetch").textContent="가져오는 중…";const p=await fetchPreview(url);q("#f-fetch").textContent="사진 가져오기";if(!p)return toast("주소 형식을 확인해 주세요.");draft={...draft,url:p.url,host:p.host,image:p.image,exact:p.exact};if(!q("#f-name").value&&p.title)q("#f-name").value=p.title.slice(0,60);dP();if(!p.exact)toast("사이트가 사진을 막아 두었습니다. 직접 올리세요.");});
+  q("#f-file").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{draft.image=await shrinkImage(f);draft.exact=true;dP();}catch{toast("이미지를 읽지 못했습니다.");}});
+  q("#f-price").addEventListener("input",e=>e.target.value=e.target.value.replace(/[^0-9]/g,""));
+  q("#f-save").addEventListener("click",()=>{
+    const name=q("#f-name").value.trim(),price=Number(q("#f-price").value.replace(/[^0-9]/g,""));
+    if(!name)return toast("이름을 적어 주세요.");if(!price)return toast("가격을 숫자로 적어 주세요.");
+    if(existing)Object.assign(existing,{name,price,url:q("#f-url").value.trim(),host:draft.host,image:draft.image,exact:draft.exact,tags:draft.tags});
+    else state.items.unshift({id:uid(),name,price,url:q("#f-url").value.trim(),host:draft.host,image:draft.image,exact:draft.exact,tags:draft.tags,resisted:0,createdAt:Date.now()});
+    queueSave();m.close();render();toast(existing?"수정했습니다.":"담았습니다. 사고 싶어지면 결제 버튼을 길게 누르세요.");
   });
 }
 
-/* --- 태그 관리 --- */
+/* ── 태그 관리 ── */
 function tagDialog(){
-  const m = modal(`
-    <p class="eyebrow">태그 관리</p>
-    <p style="font-size:12px;color:var(--muted);margin:8px 0 0">이름을 고치면 담아 둔 항목과 영수증에 바로 반영됩니다.</p>
-    <div id="t-list" style="margin-top:14px"></div>
-    <div class="row" style="margin-top:14px">
-      <input class="in" id="t-new" placeholder="새 태그 이름">
-      <button class="btn btn-dark" id="t-add" style="padding:9px 14px">추가</button>
-    </div>
-    <div class="actions"><button class="btn btn-dark" data-close>완료</button></div>`);
-  const q = s => m.el.querySelector(s);
-
-  const draw = () => {
-    q("#t-list").innerHTML = state.tags.length ? state.tags.map(t => `
-      <div class="row" style="align-items:center;margin-bottom:8px">
-        <button class="tool" data-color="${t.id}" title="색 바꾸기" style="background:${t.color};width:26px;height:26px;border-radius:8px;flex:none"></button>
-        <input class="in" data-name="${t.id}" value="${esc(t.name)}" style="font-size:13px">
-        <button class="btn btn-line" data-rm="${t.id}" style="color:var(--bad);flex:none">삭제</button>
-      </div>`).join("")
-      : `<p style="font-size:12px;color:var(--faint);margin:0">아직 태그가 없습니다.</p>`;
-  };
+  const m=modal(`<p class="eyebrow">태그 관리</p><p style="font-size:12px;color:var(--muted);margin:8px 0 0">이름을 고치면 담아 둔 항목에 바로 반영됩니다.</p><div id="t-list" style="margin-top:14px"></div><div class="irow" style="margin-top:14px"><input class="in" id="t-new" placeholder="새 태그 이름"><button class="btn btn-dark" id="t-add" style="padding:9px 14px">추가</button></div><div class="actions"><button class="btn btn-dark" data-close>완료</button></div>`);
+  const q=s=>m.el.querySelector(s);
+  const draw=()=>{q("#t-list").innerHTML=state.tags.length?state.tags.map(t=>`<div class="irow" style="align-items:center;margin-bottom:8px"><button class="tool" data-color="${t.id}" style="background:${t.color};width:26px;height:26px;border-radius:8px;flex:none"></button><input class="in" data-name="${t.id}" value="${esc(t.name)}" style="font-size:13px"><button class="btn btn-line" data-rm="${t.id}" style="color:var(--bad);flex:none">삭제</button></div>`).join(""):`<p style="font-size:12px;color:var(--faint);margin:0">아직 태그가 없습니다.</p>`;};
   draw();
-
-  q("#t-list").addEventListener("click", e => {
-    const c = e.target.closest("[data-color]");
-    if(c){
-      const t = tagById(c.dataset.color);
-      t.color = PALETTE[(PALETTE.indexOf(t.color)+1) % PALETTE.length];
-      queueSave(); draw(); render(); return;
-    }
-    const r = e.target.closest("[data-rm]");
-    if(r){
-      const id = r.dataset.rm;
-      const used = state.items.filter(i => (i.tags||[]).includes(id)).length;
-      if(used && !confirm(`${used}개 항목에서 이 태그를 뗍니다. 계속할까요?`)) return;
-      state.tags = state.tags.filter(t => t.id !== id);
-      state.items.forEach(i => i.tags = (i.tags||[]).filter(x => x !== id));
-      if(filter === id) filter = null;
-      queueSave(); draw(); render();
-    }
+  q("#t-list").addEventListener("click",e=>{
+    const c=e.target.closest("[data-color]");if(c){const t=tagById(c.dataset.color);t.color=PALETTE[(PALETTE.indexOf(t.color)+1)%PALETTE.length];queueSave();draw();render();return;}
+    const r=e.target.closest("[data-rm]");if(r){const id=r.dataset.rm;const used=state.items.filter(i=>(i.tags||[]).includes(id)).length;if(used&&!confirm(`${used}개 항목에서 이 태그를 뗍니다. 계속할까요?`))return;state.tags=state.tags.filter(t=>t.id!==id);state.items.forEach(i=>i.tags=(i.tags||[]).filter(x=>x!==id));if(filter===id)filter=null;queueSave();draw();render();}
   });
-  q("#t-list").addEventListener("input", e => {
-    const n = e.target.closest("[data-name]"); if(!n) return;
-    const t = tagById(n.dataset.name);
-    if(t){ t.name = n.value; queueSave(); render(); }
-  });
-  q("#t-add").addEventListener("click", () => {
-    const name = q("#t-new").value.trim();
-    if(!name) return toast("태그 이름을 적어 주세요.");
-    if(state.tags.some(t => t.name === name)) return toast("이미 있는 태그입니다.");
-    state.tags.push({ id:uid(), name, color:PALETTE[state.tags.length % PALETTE.length] });
-    q("#t-new").value = ""; queueSave(); draw(); render();
-  });
-  q("#t-new").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); q("#t-add").click(); }});
+  q("#t-list").addEventListener("input",e=>{const n=e.target.closest("[data-name]");if(!n)return;const t=tagById(n.dataset.name);if(t){t.name=n.value;queueSave();render();}});
+  q("#t-add").addEventListener("click",()=>{const n=q("#t-new").value.trim();if(!n)return toast("태그 이름을 적어 주세요.");if(state.tags.some(t=>t.name===n))return toast("이미 있는 태그입니다.");state.tags.push({id:uid(),name:n,color:PALETTE[state.tags.length%PALETTE.length]});q("#t-new").value="";queueSave();draw();render();});
+  q("#t-new").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();q("#t-add").click();}});
 }
 
-/* --- 목표 --- */
+/* ── 목표 ── */
 function goalDialog(){
-  const m = modal(`
-    <p class="eyebrow">목표 설정</p>
-    <label class="f">무엇을 위해 모읍니까</label>
-    <input class="in" id="g-label" placeholder="제주도 여행" value="${esc(state.goal.label)}">
-    <label class="f">목표 금액</label>
-    <input class="in mono" id="g-amt" inputmode="numeric" value="${esc(state.goal.amount)}">
-    <div class="picker">
-      ${[300000,500000,1000000,3000000].map(v => `<button class="chip" data-amt="${v}">${won(v)}</button>`).join("")}
-    </div>
-    <div class="actions">
-      <button class="btn btn-line" data-close>취소</button>
-      <button class="btn btn-dark" id="g-save">저장</button>
-    </div>`);
-  const q = s => m.el.querySelector(s);
-  m.el.addEventListener("click", e => {
-    const b = e.target.closest("[data-amt]"); if(b) q("#g-amt").value = b.dataset.amt;
-  });
-  q("#g-amt").addEventListener("input", e => e.target.value = e.target.value.replace(/[^0-9]/g,""));
-  q("#g-save").addEventListener("click", () => {
-    state.goal = { amount:Number(q("#g-amt").value)||0, label:q("#g-label").value.trim() };
-    queueSave(); m.close(); render();
-  });
+  const m=modal(`<p class="eyebrow">목표 설정</p><label class="f">무엇을 위해 모읍니까</label><input class="in" id="g-label" placeholder="제주도 여행" value="${esc(state.goal.label)}"><label class="f">목표 금액</label><input class="in mono" id="g-amt" inputmode="numeric" value="${esc(state.goal.amount)}"><div class="picker">${[300000,500000,1000000,3000000].map(v=>`<button class="chip" data-amt="${v}">${won(v)}</button>`).join("")}</div><div class="actions"><button class="btn btn-line" data-close>취소</button><button class="btn btn-dark" id="g-save">저장</button></div>`);
+  const q=s=>m.el.querySelector(s);
+  m.el.addEventListener("click",e=>{const b=e.target.closest("[data-amt]");if(b)q("#g-amt").value=b.dataset.amt;});
+  q("#g-amt").addEventListener("input",e=>e.target.value=e.target.value.replace(/[^0-9]/g,""));
+  q("#g-save").addEventListener("click",()=>{state.goal={amount:Number(q("#g-amt").value)||0,label:q("#g-label").value.trim()};queueSave();m.close();render();});
 }
 
-/* --- 결제 단말기 --- */
+/* ── 결제 단말기 ── */
 function payDialog(item){
-  const m = modal(`
-    <div class="term">
-      <p class="eyebrow">카드 단말기</p>
-      <p style="font-size:13px;color:var(--muted);margin:12px 0 0">${esc(item.name)}</p>
-      <p class="amt">${won(item.price)}</p>
-      <div id="p-zone">
-        <button class="hold" id="p-hold"><span class="fill"></span><span class="lb">길게 눌러 결제</span></button>
-        <p style="font-size:12px;color:var(--muted);margin:12px 0 0">끝까지 누르고 있으면 승인됩니다. 돈은 빠져나가지 않습니다.</p>
-        <button class="btn" data-close style="color:var(--faint);font-size:12px;text-decoration:underline;margin-top:12px">그만두기</button>
-      </div>
-    </div>`);
-
-  const hold = m.el.querySelector("#p-hold");
-  const fill = hold.querySelector(".fill");
-  const label = hold.querySelector(".lb");
-  let raf = null, t0 = 0;
-
-  const stop = () => { if(raf){ cancelAnimationFrame(raf); raf = null; fill.style.width = "0%"; label.textContent = "길게 눌러 결제"; } };
-  const tick = t => {
-    const p = Math.min(1, (t - t0) / HOLD_MS);
-    fill.style.width = (p*100) + "%";
-    label.textContent = "승인 중…";
-    if(p >= 1){ raf = null; done(); } else raf = requestAnimationFrame(tick);
-  };
-  const start = () => { if(raf) return; t0 = performance.now(); raf = requestAnimationFrame(tick); };
-
-  const done = () => {
-    item.resisted = (item.resisted||0) + 1;
-    state.logs.unshift({ id:uid(), itemId:item.id, name:item.name, price:item.price, tags:[...(item.tags||[])], at:Date.now() });
+  const m=modal(`<div class="term"><p class="eyebrow">카드 단말기</p><p style="font-size:13px;color:var(--muted);margin:12px 0 0">${esc(item.name)}</p><p class="tamt">${won(item.price)}</p><div id="p-zone"><button class="hold" id="p-hold"><span class="fill"></span><span class="lb">길게 눌러 결제</span></button><p style="font-size:12px;color:var(--muted);margin:12px 0 0">끝까지 누르고 있으면 승인됩니다. 돈은 빠져나가지 않습니다.</p><button class="btn" data-close style="color:var(--faint);font-size:12px;text-decoration:underline;margin-top:12px">그만두기</button></div></div>`);
+  const hold=m.el.querySelector("#p-hold"),fill=hold.querySelector(".fill"),label=hold.querySelector(".lb");
+  let raf=null,t0=0;
+  const stop=()=>{if(raf){cancelAnimationFrame(raf);raf=null;fill.style.width="0%";label.textContent="길게 눌러 결제";}};
+  const tick=t=>{const p=Math.min(1,(t-t0)/HOLD_MS);fill.style.width=(p*100)+"%";label.textContent="승인 중…";if(p>=1){raf=null;done();}else raf=requestAnimationFrame(tick);};
+  const start=()=>{if(raf)return;t0=performance.now();raf=requestAnimationFrame(tick);};
+  const done=()=>{
+    item.resisted=(item.resisted||0)+1;
+    state.logs.unshift({id:uid(),itemId:item.id,name:item.name,price:item.price,tags:[...(item.tags||[])],at:Date.now()});
     queueSave();
-    m.el.querySelector("#p-zone").innerHTML = `
-      <div style="margin-top:22px">
-        <span class="stamp">✓ 출금 없음</span>
-        <p style="font-size:14px;font-weight:600;margin:18px 0 0">${won(item.price)}이 계좌에 남았습니다.</p>
-        <p style="font-size:12px;color:var(--muted);margin:4px 0 0">영수증에 인쇄했습니다.</p>
-      </div>`;
-    setTimeout(() => { m.close(); render(); }, 1500);
+    m.el.querySelector("#p-zone").innerHTML=`<div style="margin-top:22px"><span class="stamp">✓ 출금 없음</span><p style="font-size:14px;font-weight:600;margin:18px 0 0">${won(item.price)}이 계좌에 남았습니다.</p><p style="font-size:12px;color:var(--muted);margin:4px 0 0">영수증에 인쇄했습니다.</p></div>`;
+    setTimeout(()=>{m.close();render();},1500);
   };
-
-  hold.addEventListener("pointerdown", start);
-  hold.addEventListener("pointerup", stop);
-  hold.addEventListener("pointerleave", stop);
-  hold.addEventListener("pointercancel", stop);
-  hold.addEventListener("keydown", e => { if(e.key===" "||e.key==="Enter"){ e.preventDefault(); start(); }});
-  hold.addEventListener("keyup", stop);
+  hold.addEventListener("pointerdown",start);hold.addEventListener("pointerup",stop);
+  hold.addEventListener("pointerleave",stop);hold.addEventListener("pointercancel",stop);
+  hold.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();start();}});hold.addEventListener("keyup",stop);
 }
 
-/* =====================================================================
-   7) 이벤트
-   ===================================================================== */
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-act]"); if(!b) return;
-  const id = b.dataset.id;
+/* ── 월별 리포트 ── */
+function reportDialog(){
+  const months=[...new Set(state.logs.map(l=>mkey(l.at)))].sort().reverse();
+  if(!months.length){toast("아직 기록이 없습니다. 결제 버튼을 한 번 눌러 보세요.");return;}
+  if(!months.includes(reportYM))reportYM=months[0];
+
+  const drawBody=ym=>{
+    const d=reportData(ym);
+    if(!d)return`<div class="nodata">이 달에는 기록이 없습니다.</div>`;
+    const [yr,mo]=ym.split("-");
+    const tagMax=d.tagRows[0]?.sum||1;
+    return`<div class="kpi-grid">
+  <div class="kpi"><p class="kk">절약 총액</p><p class="kv" style="font-size:15px">${won(d.tot)}</p></div>
+  <div class="kpi"><p class="kk">참은 횟수</p><p class="kv">${d.count}회</p></div>
+  <div class="kpi"><p class="kk">참은 날</p><p class="kv">${d.days}일</p></div>
+  <div class="kpi"><p class="kk">일평균</p><p class="kv" style="font-size:15px">${won(Math.round(d.tot/d.days))}</p></div>
+</div>
+<div class="insight">${d.insight}</div>
+<div class="rpt-sec"><h3>카테고리별 절약</h3>${d.tagRows.length?d.tagRows.map(r=>`<div class="rbar-row"><span class="rl2" style="color:${r.color}">${esc(r.name)}</span><div class="rb"><span style="width:${r.sum/tagMax*100}%;background:${r.color}"></span></div><span class="ra">${won(r.sum)}</span></div>`).join(""):`<p style="font-size:13px;color:var(--faint)">태그가 없습니다.</p>`}</div>
+<div class="rpt-sec"><h3>가장 많이 참은 항목 TOP 5</h3>${d.topItems.length?d.topItems.map((it,i)=>`<div class="ti"><span class="tn">${i+1}</span><span class="tm">${esc(it.name)}</span><span class="tc">${it.count}번</span><span class="tp">${won(it.sum)}</span></div>`).join(""):`<p style="font-size:13px;color:var(--faint)">항목 정보가 없습니다.</p>`}</div>`;
+  };
+
+  const m=modal(`<p class="eyebrow">월별 소비 리포트</p>
+<div class="rpt-nav" id="rnav">
+  <button id="r-prev">◀</button>
+  <span class="ml" id="r-mlabel"></span>
+  <button id="r-next">▶</button>
+</div>
+<div id="r-body"></div>`,true);
+
+  const refresh=()=>{
+    const[yr,mo]=reportYM.split("-");
+    m.el.querySelector("#r-mlabel").textContent=`${yr}년 ${mo}월`;
+    const idx=months.indexOf(reportYM);
+    m.el.querySelector("#r-prev").disabled=idx>=months.length-1;
+    m.el.querySelector("#r-next").disabled=idx<=0;
+    m.el.querySelector("#r-body").innerHTML=drawBody(reportYM);
+  };
+  refresh();
+  m.el.querySelector("#r-prev").addEventListener("click",()=>{const i=months.indexOf(reportYM);if(i<months.length-1){reportYM=months[i+1];refresh();}});
+  m.el.querySelector("#r-next").addEventListener("click",()=>{const i=months.indexOf(reportYM);if(i>0){reportYM=months[i-1];refresh();}});
+}
+
+/* ── Firebase 설정 파싱 ── */
+function parseCfg(text){
+  try{
+    const m=text.match(/\{[\s\S]*\}/);if(!m)return null;
+    const c=m[0].replace(/\/\/.*$/gm,"").replace(/,\s*\}/,"}").replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g,'$1"$2":');
+    return JSON.parse(c);
+  }catch{return null;}
+}
+
+/* ── 이벤트 ── */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const id=b.dataset.id;
   switch(b.dataset.act){
-    case "add":     itemDialog(null); break;
-    case "edit":    itemDialog(state.items.find(i => i.id === id)); break;
-    case "del": {
-      const i = state.items.find(x => x.id === id);
-      if(i && confirm(`"${i.name}"을(를) 목록에서 지울까요? 영수증 기록은 남습니다.`)){
-        state.items = state.items.filter(x => x.id !== id); queueSave(); render();
-      }
-      break;
+    case "add":     itemDialog(null);break;
+    case "edit":    itemDialog(state.items.find(i=>i.id===id));break;
+    case "del":{const i=state.items.find(x=>x.id===id);if(i&&confirm(`"${i.name}"을(를) 목록에서 지울까요?`)){state.items=state.items.filter(x=>x.id!==id);queueSave();render();}break;}
+    case "pay":     payDialog(state.items.find(i=>i.id===id));break;
+    case "filter":  filter=id||null;render();break;
+    case "tags":    tagDialog();break;
+    case "goal":    goalDialog();break;
+    case "report":  reportDialog();break;
+    case "blocked": toast("링크는 열리지 않습니다. 지금은 참는 중이니까요.");break;
+    case "undo":{const l=state.logs.find(x=>x.id===id);if(!l)return;state.logs=state.logs.filter(x=>x.id!==id);const it=state.items.find(x=>x.id===l.itemId);if(it)it.resisted=Math.max(0,(it.resisted||0)-1);queueSave();render();toast("기록을 지웠습니다.");break;}
+    case "signin":  signIn();break;
+    case "signout": fb.auth.signOut(fb.authInst);break;
+    case "configure": mode="setup";render();break;
+    case "setup-skip": mode="local";loadLocal();render();break;
+    case "setup-save":{
+      const raw=$("#cfg-paste").value;
+      const cfg=parseCfg(raw);
+      if(!cfg?.apiKey){const el=$("#cfg-err");el.style.display="block";el.textContent="설정 코드를 읽지 못했습니다. const firebaseConfig = { … } 부분 전체를 복사해 주세요.";return;}
+      saveCfg(cfg);toast("Firebase에 연결하는 중…");
+      fb=await initFB(cfg);
+      if(!fb){toast("Firebase에 연결하지 못했습니다. apiKey를 확인해 주세요.");return;}
+      mode="cloud";
+      fb.auth.onAuthStateChanged(fb.authInst,u=>{if(unsub){unsub();unsub=null;}user=u;if(u){synced=false;state=blank();watchCloud();}render();});
+      render();break;
     }
-    case "pay":     payDialog(state.items.find(i => i.id === id)); break;
-    case "filter":  filter = id || null; render(); break;
-    case "tags":    tagDialog(); break;
-    case "goal":    goalDialog(); break;
-    case "blocked": toast("링크는 열리지 않습니다. 지금은 참는 중이니까요."); break;
-    case "undo": {
-      const l = state.logs.find(x => x.id === id); if(!l) return;
-      state.logs = state.logs.filter(x => x.id !== id);
-      const it = state.items.find(x => x.id === l.itemId);
-      if(it) it.resisted = Math.max(0, (it.resisted||0) - 1);
-      queueSave(); render(); toast("기록을 지웠습니다.");
-      break;
-    }
-    case "signin":  signIn(); break;
-    case "signout": fb.auth.signOut(fb.authInst); break;
   }
 });
 
-function toast(msg){
-  document.querySelector(".toast")?.remove();
-  const d = document.createElement("div");
-  d.className = "toast"; d.role = "status"; d.textContent = msg;
-  document.body.appendChild(d);
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => d.remove(), 2600);
-}
+function toast(msg){$(".toast")?.remove();const d=document.createElement("div");d.className="toast";d.role="status";d.textContent=msg;document.body.appendChild(d);clearTimeout(toastTmr);toastTmr=setTimeout(()=>d.remove(),2600);}
 
 async function signIn(){
-  try{
-    await fb.auth.signInWithPopup(fb.authInst, new fb.auth.GoogleAuthProvider());
-  }catch(err){
-    if(String(err?.code).includes("popup")) fb.auth.signInWithRedirect(fb.authInst, new fb.auth.GoogleAuthProvider());
-    else toast("로그인하지 못했습니다. 다시 시도해 주세요.");
-  }
+  try{await fb.auth.signInWithPopup(fb.authInst,new fb.auth.GoogleAuthProvider());}
+  catch(err){if(String(err?.code).includes("popup"))fb.auth.signInWithRedirect(fb.authInst,new fb.auth.GoogleAuthProvider());else toast("로그인하지 못했습니다. 다시 시도해 주세요.");}
 }
 
-/* =====================================================================
-   8) 시작
-   ===================================================================== */
-(async () => {
-  try{ fb = await initFirebase(); }catch{ fb = null; }
-  if(fb){
-    mode = "cloud";
-    fb.auth.onAuthStateChanged(fb.authInst, u => {
-      if(unsub){ unsub(); unsub = null; }
-      user = u;
-      if(u){ synced = false; state = blank(); watchCloud(); }
-      render();
-    });
-    render();
-  }else{
-    mode = "local";
-    loadLocal();
-    render();
+/* ── 시작 ── */
+(async()=>{
+  const cfg=loadCfg();
+  if(cfg?.apiKey){
+    fb=await initFB(cfg);
+    if(fb){mode="cloud";fb.auth.onAuthStateChanged(fb.authInst,u=>{if(unsub){unsub();unsub=null;}user=u;if(u){synced=false;state=blank();watchCloud();}render();});render();return;}
   }
+  if(!cfg){mode="setup";render();}
+  else{mode="local";loadLocal();render();}
 })();
 </script>
 </body>
