@@ -199,17 +199,35 @@ let fb = null, saveTmr = null, unsub = null;
 const loadCfg = () => { try{ return JSON.parse(localStorage.getItem(LS_CFG)||"null"); }catch{ return null; } };
 const saveCfg = c => localStorage.setItem(LS_CFG,JSON.stringify(c));
 
+const FB_ERRORS = {
+  "auth/unauthorized-domain":  "이 주소가 Firebase에 등록되지 않았습니다. Authentication → Settings → 승인된 도메인에 현재 도메인을 추가하세요.",
+  "auth/operation-not-allowed":"구글 로그인이 꺼져 있습니다. Authentication → Sign-in method → Google을 사용 설정하세요.",
+  "auth/configuration-not-found":"Authentication이 아직 설정되지 않았습니다. Firebase 콘솔에서 Authentication → 시작하기를 먼저 눌러 주세요.",
+  "auth/invalid-api-key":      "API 키가 올바르지 않습니다. 웹 API 키를 다시 확인해 주세요.",
+  "auth/api-key-not-valid":    "API 키가 올바르지 않습니다. 웹 API 키를 다시 확인해 주세요.",
+  "auth/popup-blocked":        "팝업이 차단됐습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요.",
+  "permission-denied":         "Firestore 보안 규칙이 접근을 막고 있습니다. 규칙을 확인해 주세요.",
+  "unavailable":               "Firestore에 연결할 수 없습니다. 데이터베이스를 만들었는지 확인해 주세요.",
+  "failed-precondition":       "Firestore 데이터베이스가 아직 생성되지 않았습니다. 콘솔에서 데이터베이스 만들기를 먼저 진행하세요.",
+};
+const fbMsg = err => {
+  const code = err?.code || "";
+  if(FB_ERRORS[code]) return FB_ERRORS[code];
+  return (err?.message || String(err)).replace(/^Firebase:\s*/,"").slice(0,180);
+};
+
 async function initFB(cfg){
   if(!cfg?.apiKey) return null;
-  try{
-    const[app,auth,fs]=await Promise.all([
-      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-    ]);
-    const a=app.initializeApp(cfg);
-    return{a,auth,fs,authInst:auth.getAuth(a),db:fs.getFirestore(a)};
-  }catch(e){ console.error(e); return null; }
+  if(location.protocol === "file:"){
+    throw new Error("파일을 직접 열면 구글 로그인이 동작하지 않습니다. GitHub Pages 주소로 접속해 주세요.");
+  }
+  const[app,auth,fs]=await Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+  ]);
+  const a=app.initializeApp(cfg);
+  return{a,auth,fs,authInst:auth.getAuth(a),db:fs.getFirestore(a)};
 }
 
 function watchCloud(){
@@ -219,14 +237,14 @@ function watchCloud(){
     if(snap.exists()){ const d=snap.data(); state={goal:d.goal||blank().goal,tags:d.tags||[],items:d.items||[],logs:d.logs||[]}; }
     else queueSave();
     synced=true; render();
-  },()=>toast("동기화가 끊겼습니다."));
+  },err=>{ console.error(err); toast("동기화 오류: "+fbMsg(err)); });
 }
 
 function queueSave(){
   clearTimeout(saveTmr);
   saveTmr=setTimeout(async()=>{
     const p={...state,updatedAt:Date.now()};
-    if(mode==="cloud"&&user){ try{ await fb.fs.setDoc(fb.fs.doc(fb.db,"savers",user.uid),p); }catch{ toast("저장하지 못했습니다."); } }
+    if(mode==="cloud"&&user){ try{ await fb.fs.setDoc(fb.fs.doc(fb.db,"savers",user.uid),p); }catch(err){ console.error(err); toast("저장 실패: "+fbMsg(err)); } }
     else{ try{ localStorage.setItem(LS_DAT,JSON.stringify(p)); }catch{} }
   },400);
 }
@@ -427,7 +445,8 @@ function gateHTML(){
   <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.3z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.5-5.2l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8 41.5 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.4c-.4-1.3-.7-2.7-.7-4.4s.3-3.1.7-4.4v-5.7H4.5C2.9 17 2 20.4 2 24s.9 7 2.5 10.1l7.3-5.7z"/><path fill="#EA4335" d="M24 10.8c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.3 30 2 24 2 15.4 2 8 6.5 4.5 13.9l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/></svg>
   구글로 계속하기
 </button>
-<button class="btn btn-line" style="width:100%;padding:11px;border-radius:12px;font-size:14px" data-act="configure">설정 코드 다시 입력</button>
+<p id="gate-err" style="color:var(--bad);font-size:12px;line-height:1.7;text-align:left;background:#fef2f2;border-radius:10px;padding:10px 12px;margin:0 0 12px;display:none"></p>
+<button class="btn btn-line" style="width:100%;padding:11px;border-radius:12px;font-size:14px" data-act="configure">설정 값 다시 입력</button>
 </div>`;
 }
 
@@ -755,9 +774,11 @@ document.addEventListener("click",async e=>{
       const pid   =($("#cfg-pid")?.value||"").trim();
       const cfg=buildCfg(apiKey,pid);
       if(!cfg){const el=$("#cfg-err");el.style.display="block";el.textContent=!apiKey||!pid?"두 값을 모두 입력해 주세요.":"API 키는 AIzaSy… 로 시작해야 합니다.";return;}
-      saveCfg(cfg); toast("Firebase에 연결하는 중…");
-      fb=await initFB(cfg);
-      if(!fb){const el=$("#cfg-err");el.style.display="block";el.textContent="연결하지 못했습니다. API 키와 프로젝트 ID를 다시 확인해 주세요.";return;}
+      toast("Firebase에 연결하는 중…");
+      try{ fb=await initFB(cfg); }
+      catch(err){ console.error(err); const el=$("#cfg-err"); el.style.display="block"; el.textContent="연결 실패: "+fbMsg(err); return; }
+      if(!fb){const el=$("#cfg-err");el.style.display="block";el.textContent="연결하지 못했습니다. 값을 다시 확인해 주세요.";return;}
+      saveCfg(cfg);
       mode="cloud";
       fb.auth.onAuthStateChanged(fb.authInst,u=>{ if(unsub){unsub();unsub=null;} user=u; if(u){synced=false;state=blank();watchCloud();} render(); });
       render(); break;
@@ -769,14 +790,28 @@ function toast(msg){$(".toast")?.remove();const d=document.createElement("div");
 
 async function signIn(){
   try{ await fb.auth.signInWithPopup(fb.authInst,new fb.auth.GoogleAuthProvider()); }
-  catch(err){ if(String(err?.code).includes("popup"))fb.auth.signInWithRedirect(fb.authInst,new fb.auth.GoogleAuthProvider()); else toast("로그인하지 못했습니다."); }
+  catch(err){
+    console.error(err);
+    const code=String(err?.code||"");
+    if(code==="auth/popup-closed-by-user"||code==="auth/cancelled-popup-request") return;
+    if(code.includes("popup")){
+      try{ await fb.auth.signInWithRedirect(fb.authInst,new fb.auth.GoogleAuthProvider()); return; }catch(e2){ console.error(e2); showGateError(fbMsg(e2)); return; }
+    }
+    showGateError(fbMsg(err));
+  }
+}
+function showGateError(msg){
+  const el=$("#gate-err");
+  if(el){ el.style.display="block"; el.textContent=msg; }
+  else toast(msg);
 }
 
 /* ─── 시작 ─── */
 (async()=>{
   const cfg=loadCfg();
   if(cfg?.apiKey){
-    fb=await initFB(cfg);
+    try{ fb=await initFB(cfg); }
+    catch(err){ console.error(err); fb=null; setTimeout(()=>toast("연결 실패: "+fbMsg(err)),400); }
     if(fb){
       mode="cloud";
       fb.auth.onAuthStateChanged(fb.authInst,u=>{ if(unsub){unsub();unsub=null;} user=u; if(u){synced=false;state=blank();watchCloud();} render(); });
