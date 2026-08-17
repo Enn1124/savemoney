@@ -216,7 +216,7 @@ function watchCloud(){
   const{fs,db}=fb, ref=fs.doc(db,"savers",user.uid);
   unsub=fs.onSnapshot(ref,snap=>{
     if(snap.metadata.hasPendingWrites)return;
-    if(snap.exists()){ const d=snap.data(); state={goal:d.goal||blank().goal,tags:d.tags||[],items:d.items||[],logs:d.logs||}; }
+    if(snap.exists()){ const d=snap.data(); state={goal:d.goal||blank().goal,tags:d.tags||[],items:d.items||[],logs:d.logs||[]}; }
     else queueSave();
     synced=true; render();
   },()=>toast("동기화가 끊겼습니다."));
@@ -437,7 +437,7 @@ function modal(inner,wide){
   const v=document.createElement("div"); v.className="veil";
   v.innerHTML=`<div class="modal${wide?" wide":""}" role="dialog" aria-modal="true"><button class="x" data-close>✕</button>${inner}</div>`;
   document.body.appendChild(v);
-  const close=()=>{ v.remove(); document.removeEventListener("keydown",key); };
+  const close=()=>{ try{ v._cleanup?.(); }catch{} v.remove(); document.removeEventListener("keydown",key); };
   const key=e=>{ if(e.key==="Escape")close(); };
   document.addEventListener("keydown",key);
   v.addEventListener("click",e=>{ if(e.target===v||e.target.hasAttribute("data-close"))close(); });
@@ -648,32 +648,36 @@ function startDelivery(m, item){
 
   const clock = zone.querySelector("#d-clock");
   const bar   = zone.querySelector("#d-bar");
-  const iv = setInterval(async()=>{
-    remaining--;
-    if(clock) clock.textContent = fmtSec(remaining);
-    if(bar)   bar.style.width = (remaining/total*100)+"%";
-    if(remaining<=0){
-      clearInterval(iv);
-      // 작업물 링크 열기
-      if(item.artifactUrl){
-        try{ window.open(item.artifactUrl,"_blank","noopener"); }
-        catch{ toast("링크를 여는 데 실패했습니다."); }
-      }
-      if(zone){
-        zone.innerHTML=`<div class="delivery-wrap delivery-done">
-        <p style="font-size:28px;margin:0">📦</p>
-        <p style="font-size:15px;font-weight:700;margin:10px 0 4px">배송 완료!</p>
-        <p style="font-size:12px;color:var(--muted);margin:0">실제 결제는 없었습니다.</p>
-        <button class="btn btn-line" data-close style="margin-top:16px">닫기</button></div>`;
-        zone.querySelector("[data-close]")?.addEventListener("click",()=>{ m.close(); render(); });
-      }
-      render();
+
+  const finish = () => {
+    // 자동 열기를 시도하되, 팝업이 막히면 버튼으로 대체
+    let opened = null;
+    if(item.artifactUrl){
+      try{ opened = window.open(item.artifactUrl,"_blank","noopener"); }catch{}
     }
+    const blocked = item.artifactUrl && !opened;
+    if(zone){
+      zone.innerHTML=`<div class="delivery-wrap delivery-done">
+      <p style="font-size:30px;margin:0">📦</p>
+      <p style="font-size:15px;font-weight:700;margin:10px 0 4px">배송 완료!</p>
+      <p style="font-size:12px;color:var(--muted);margin:0">실제 결제는 없었습니다.</p>
+      ${item.artifactUrl?`<a class="btn ${blocked?"btn-amber":"btn-line"} btn-wide" id="d-open" href="${esc(item.artifactUrl)}" target="_blank" rel="noopener" style="display:block;margin-top:16px;text-decoration:none;text-align:center">${blocked?"작업물 열기 (팝업이 차단됐습니다)":"작업물 다시 열기"}</a>`:""}
+      <button class="btn btn-line" id="d-close" style="margin-top:8px;width:100%">닫기</button></div>`;
+      zone.querySelector("#d-close")?.addEventListener("click",()=>{ m.close(); render(); });
+    }
+    render();
+  };
+
+  const iv = setInterval(()=>{
+    remaining--;
+    if(clock) clock.textContent = fmtSec(Math.max(0,remaining));
+    if(bar)   bar.style.width = Math.max(0,remaining/total*100)+"%";
+    if(remaining<=0){ clearInterval(iv); finish(); }
   },1000);
 
-  // 모달 닫을 때 타이머도 멈춤
-  const origClose = m.close.bind(m);
-  m.close = () => { clearInterval(iv); origClose(); };
+  // 모달이 어떤 방법으로 닫히든 타이머 정리
+  const veil = m.el.parentElement;
+  if(veil) veil._cleanup = () => clearInterval(iv);
 }
 
 /* ─── 월별 리포트 ─── */
